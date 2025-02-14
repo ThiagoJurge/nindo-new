@@ -9,6 +9,6 @@ def webhook():
     group_id = data['phone']  # Usando o group_id vindo do webhook
     message_text = data['text']['message']
     
-    response_message = process_webhook(group_id, message_text)
+    # response_message = process_webhook(group_id, message_text)
     
     return jsonify({'status': 'sucesso', 'message': data}), 200
