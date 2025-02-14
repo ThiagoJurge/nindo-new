@@ -7,9 +7,6 @@ main_bp = Blueprint('main', __name__)
 @main_bp.route('/webhook', methods=['POST'])
 def webhook():
     data = request.get_json()  # <-- Corrigido aqui
-    
-    if not data:
-        return jsonify({'status': 'erro', 'message': 'Requisição inválida'}), 400
 
     phone = data.get("phone")
     
