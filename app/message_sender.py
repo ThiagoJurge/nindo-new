@@ -25,10 +25,3 @@ def send_message(number, message):
         print("Mensagem enviada com sucesso!")
     except requests.exceptions.RequestException as e:
         print(f"Erro ao enviar a mensagem: {e}")
-
-
-number = "5522981013352"
-message = "teste"
-
-# Chama a função para enviar a mensagem
-send_message(number, message)
