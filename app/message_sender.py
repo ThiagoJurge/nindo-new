@@ -1,5 +1,4 @@
 import requests
-import sys
 
 def send_message(number, message):
     # URL da API do Z-API (modifique se necessário)
@@ -21,7 +20,6 @@ def send_message(number, message):
     try:
         response = requests.post(api_url, headers=headers, json=payload)
         response.raise_for_status()  # Levanta um erro se a resposta não for 2xx
-        print(response.text)
         print("Mensagem enviada com sucesso!")
     except requests.exceptions.RequestException as e:
         print(f"Erro ao enviar a mensagem: {e}")

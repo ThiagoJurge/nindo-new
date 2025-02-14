@@ -4,16 +4,20 @@ from .message_sender import send_message
 
 main_bp = Blueprint('main', __name__)
 
-@main_bp.route('/webhook', methods=['POST'])
-def webhook():
-    data = request.get_json()  # <-- Corrigido aqui
+@main_bp.route("/webhook-receiver", methods=["POST"])
+def webhook_receiver():
+    try:
+        # Captura os dados recebidos no webhook
+        data = request.json
 
-    phone = data.get("phone")
-    
-    if phone == "5522981013352":
-        send_message(phone, "Bom dia, carioca!")  # Envia mensagem personalizada
-    
-    # Se precisar processar a mensagem com outro serviço
-    # response_message = process_webhook(phone, data.get("message"))
-    
-    return jsonify({'status': 'sucesso', 'message': data}), 200
+        # Armazena os valores em variáveis
+        phone = data.get("phone")
+        
+        if phone == "5522981013352":
+            send_message(phone, "Bom dia, carioca!")  # Envia mensagem personalizada
+
+        
+        return jsonify({'status': 'sucesso', 'message': data}), 200
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
