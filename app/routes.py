@@ -11,4 +11,4 @@ def webhook():
     
     response_message = process_webhook(group_id, message_text)
     
-    return jsonify({'status': 'sucesso', 'message': response_message}), 200
+    return jsonify({'status': 'sucesso', 'message': data}), 200
