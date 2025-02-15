@@ -1,25 +1,68 @@
+import sys
+import subprocess
+import os
 import requests
+import time
+from PIL import Image
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
-def send_message(number, message):
-    # URL da API do Z-API (modifique se necessário)
-    api_url = "https://api.z-api.io/instances/3DCD168EA9FE70A00D0956C5A090F8FA/token/D5926B43FE1F841BA8A39F75/send-text"
+def crop_image_to_grid(image_path, output_folder, x_cells, y_cells):
+    img = Image.open(image_path)
+    width, height = img.size
+    cell_width = width // x_cells
+    cell_height = height // y_cells
+    os.makedirs(output_folder, exist_ok=True)
 
-    # Dados a serem enviados
-    payload = {
-        "phone": number,  # Número de telefone do destinatário (com DDD e sem espaços ou sinais)
-        "message": message  # A mensagem que será enviada
-    }
+    images = []
+    for row in range(y_cells):
+        for col in range(x_cells):
+            left, upper = col * cell_width, row * cell_height
+            right, lower = left + cell_width, upper + cell_height
+            cropped_img = img.crop((left, upper, right, lower))
+            img_path = os.path.join(output_folder, f'cell_{row}_{col}.png')
+            cropped_img.save(img_path)
+            images.append((row, col, img_path))
+    return images
 
-    
-    headers = {
-            "Client-Token": "F0b7eace040f941ada5ee9d11b5c81c51S",
-            "Content-Type": "application/json",
-        }
+def upload_to_imgur(file_path, client_id):
+    headers = {'Authorization': f'Client-ID {client_id}'}
+    with open(file_path, 'rb') as img:
+        response = requests.post('https://api.imgur.com/3/upload', headers=headers, files={'image': img})
+        print(response.text)
+    data = response.json()
+    return data['data']['link'] if 'data' in data else None
 
-    # Enviar requisição POST
-    try:
-        response = requests.post(api_url, headers=headers, json=payload)
-        response.raise_for_status()  # Levanta um erro se a resposta não for 2xx
-        print("Mensagem enviada com sucesso!")
-    except requests.exceptions.RequestException as e:
-        print(f"Erro ao enviar a mensagem: {e}")
+def upload_to_google_sheets(images, spreadsheet_url, sheet_name, creds_path, client_id):
+    creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, [
+        "https://spreadsheets.google.com/feeds", 
+        "https://www.googleapis.com/auth/drive"
+    ])
+    client = gspread.authorize(creds)
+    sheet = client.open_by_url(spreadsheet_url).worksheet(sheet_name)
+
+    # Verificar onde o último upload parou
+    last_uploaded = 0
+    if os.path.exists('last_uploaded.txt'):
+        with open('last_uploaded.txt', 'r') as file:
+            last_uploaded = int(file.read())
+
+    for idx, (row, col, img_path) in enumerate(images[last_uploaded:], start=last_uploaded):
+        public_url = upload_to_imgur(img_path, client_id)
+        if public_url:
+            cell_value = f'=IMAGE("{public_url}")'
+            sheet.update_cell(row + 1, col + 1, cell_value)
+            # Atualizar o índice no arquivo de log
+            with open('last_uploaded.txt', 'w') as file:
+                file.write(str(idx + 1))  # Salvar o índice da próxima célula a ser carregada
+        time.sleep(0.5)  # Espera de 0.5 segundo entre uploads
+
+    print(f"Imagens inseridas em {spreadsheet_url} - {sheet_name}")
+
+# Exemplo de uso:
+CLIENT_ID = '03f21c703256061'  # Substitua pelo seu Client ID do Imgur
+images = crop_image_to_grid(r'Mapa_Mundial.webp', 'recortes', 20, 11)
+upload_to_google_sheets(images, 'https://docs.google.com/spreadsheets/d/1K2WCxt6oDK8OPjvnQjC6zM7FBCtjqPajxVZN1-W-omg/edit', 'Página2', 'credentials.json', CLIENT_ID)
+
+# Instale as dependências com:
+# pip install pillow gspread oauth2client requests
